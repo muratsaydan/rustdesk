@@ -271,6 +271,37 @@ def external_resources(flutter, args, res_dir):
                 shutil.copytree(f, f'{flutter_build_dir_2}{f.stem}')
 
 
+def ensure_flutter_rust_bridge_tools():
+    """CI: .github/workflows/bridge.yml (flutter_rust_bridge_codegen + cargo-expand)."""
+    frb = pathlib.Path.home() / '.cargo' / 'bin' / (
+        'flutter_rust_bridge_codegen.exe' if windows else 'flutter_rust_bridge_codegen')
+    if not frb.is_file():
+        system2('cargo install cargo-expand --version 1.0.95 --locked')
+        system2(
+            'cargo install flutter_rust_bridge_codegen --version 1.80.1 --features uuid --locked')
+
+
+def generate_flutter_rust_bridge():
+    """Produces src/bridge_generated.rs, Dart bindings, C headers (required for --flutter)."""
+    ensure_flutter_rust_bridge_tools()
+    os.makedirs('flutter/macos/Runner', exist_ok=True)
+    os.makedirs('flutter/ios/Runner', exist_ok=True)
+    cwd = os.getcwd()
+    os.chdir('flutter')
+    system2('flutter pub get')
+    os.chdir(cwd)
+    frb = pathlib.Path.home() / '.cargo' / 'bin' / (
+        'flutter_rust_bridge_codegen.exe' if windows else 'flutter_rust_bridge_codegen')
+    c_out = './flutter/macos/Runner/bridge_generated.h'
+    cmd = (
+        f'"{frb}" --rust-input ./src/flutter_ffi.rs '
+        f'--dart-output ./flutter/lib/generated_bridge.dart '
+        f'--c-output {c_out}'
+    )
+    system2(cmd)
+    shutil.copy2(c_out, './flutter/ios/Runner/bridge_generated.h')
+
+
 def get_features(args):
     features = ['inline'] if not args.flutter else []
     if args.hwcodec:
@@ -486,6 +517,8 @@ def main():
         return
     res_dir = 'resources'
     external_resources(flutter, args, res_dir)
+    if flutter:
+        generate_flutter_rust_bridge()
     if windows:
         # build virtual display dynamic library
         os.chdir('libs/virtual_display/dylib')

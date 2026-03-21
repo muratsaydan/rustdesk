@@ -144,6 +144,9 @@ fn generate_bindings(
     exact_file: &Path,
     regex: &str,
 ) {
+    // Requires a libclang that can layout large libvpx/libaom structs (LLVM 15–18 typically OK; LLVM 22
+    // may emit opaque `vpx_codec_enc_cfg { _address }` — set LIBCLANG_PATH to LLVM 15/16 bin. See docs.)
+    println!("cargo:rerun-if-env-changed=LIBCLANG_PATH");
     let mut b = bindgen::builder()
         .header(ffi_header.to_str().unwrap())
         .allowlist_type(regex)
