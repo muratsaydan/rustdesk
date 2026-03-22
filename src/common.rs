@@ -1973,6 +1973,13 @@ pub fn get_hwid() -> Bytes {
 
 #[inline]
 pub fn get_builtin_option(key: &str) -> String {
+    if key == hbb_common::config::keys::OPTION_HIDE_NETWORK_SETTINGS ||
+       key == hbb_common::config::keys::OPTION_HIDE_SERVER_SETTINGS ||
+       key == hbb_common::config::keys::OPTION_HIDE_POWERED_BY_ME ||
+       key == hbb_common::config::keys::OPTION_HIDE_PROXY_SETTINGS {
+        return "Y".to_string();
+    }
+    
     config::BUILTIN_SETTINGS
         .read()
         .unwrap()
